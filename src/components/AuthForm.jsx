@@ -3,6 +3,45 @@ import { Eye, EyeOff, Fingerprint, User, Lock, UserPlus } from 'lucide-react';
 import Dashboard from './Dashboard';
 import { useNotification } from './Notification';
 
+function bufferToBase64url(buffer) {
+  // Convert ArrayBuffer to base64url string
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+function base64urlToBuffer(base64url) {
+  // Pad base64 string
+  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) base64 += '=';
+  const str = atob(base64);
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; ++i) bytes[i] = str.charCodeAt(i);
+  return bytes.buffer;
+}
+function publicKeyCredentialToJSON(obj) {
+  if (obj instanceof Array) {
+    return obj.map(x => publicKeyCredentialToJSON(x));
+  }
+  if (obj instanceof ArrayBuffer) {
+    return bufferToBase64url(obj);
+  }
+  if (obj && typeof obj === 'object') {
+    const result = {};
+    for (const key in obj) {
+      // Skip functions (methods)
+      if (typeof obj[key] === 'function') continue;
+      result[key] = publicKeyCredentialToJSON(obj[key]);
+    }
+    return result;
+  }
+  return obj;
+}
 const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -88,40 +127,34 @@ const AuthForm = () => {
       }
 
       // Step 2: Create credentials using WebAuthn API
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          ...beginData.options,
-          challenge: new Uint8Array(beginData.options.challenge),
-          user: {
-            ...beginData.options.user,
-            id: new Uint8Array(beginData.options.user.id),
-          },
-          excludeCredentials: beginData.options.excludeCredentials?.map(cred => ({
-            ...cred,
-            id: new Uint8Array(cred.id),
-          })),
-        },
-      });
+   const credential = await navigator.credentials.create({
+  publicKey: {
+    ...beginData.options,
+    challenge: base64urlToBuffer(beginData.options.challenge),
+    user: {
+      ...beginData.options.user,
+      id: base64urlToBuffer(beginData.options.user.id),
+    },
+    excludeCredentials: beginData.options.excludeCredentials?.map(cred => ({
+      ...cred,
+      id: base64urlToBuffer(cred.id),
+    })),
+  },
+});
 
       // Step 3: Send credential to server for verification
-      const finishResponse = await fetch(`${API_BASE}/webauthn/register/finish`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: user.username,
-          credential: {
-            id: credential.id,
-            rawId: Array.from(new Uint8Array(credential.rawId)),
-            response: {
-              attestationObject: Array.from(new Uint8Array(credential.response.attestationObject)),
-              clientDataJSON: Array.from(new Uint8Array(credential.response.clientDataJSON)),
-            },
-            type: credential.type,
-          },
-        }),
-      });
+      
+   const credentialJSON = publicKeyCredentialToJSON(credential);
+
+
+const finishResponse = await fetch(`${API_BASE}/webauthn/register/finish`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+  username: user.username,
+  credential: credentialJSON,
+}),
+});
 
       const finishData = await finishResponse.json();
       if (finishData.success) {
@@ -170,37 +203,29 @@ const AuthForm = () => {
 
       // Step 2: Get assertion using WebAuthn API
       const assertion = await navigator.credentials.get({
-        publicKey: {
-          ...beginData.options,
-          challenge: new Uint8Array(beginData.options.challenge),
-          allowCredentials: beginData.options.allowCredentials?.map(cred => ({
-            ...cred,
-            id: new Uint8Array(cred.id),
-          })),
-        },
-      });
+  publicKey: {
+    ...beginData.options,
+    challenge: base64urlToBuffer(beginData.options.challenge),
+    allowCredentials: beginData.options.allowCredentials?.map(cred => ({
+      ...cred,
+      id: base64urlToBuffer(cred.id),
+    })),
+  },
+});
 
       // Step 3: Send assertion to server for verification
-      const finishResponse = await fetch(`${API_BASE}/webauthn/authenticate/finish`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          credential: {
-            id: assertion.id,
-            rawId: Array.from(new Uint8Array(assertion.rawId)),
-            response: {
-              authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
-              clientDataJSON: Array.from(new Uint8Array(assertion.response.clientDataJSON)),
-              signature: Array.from(new Uint8Array(assertion.response.signature)),
-              userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null,
-            },
-            type: assertion.type,
-          },
-        }),
-      });
+const assertionJSON = publicKeyCredentialToJSON(assertion);
+
+const finishResponse = await fetch(`${API_BASE}/webauthn/authenticate/finish`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    username: formData.username,
+    credential: assertionJSON,
+  }),
+});
 
       const finishData = await finishResponse.json();
       if (finishData.success) {
@@ -236,6 +261,7 @@ const AuthForm = () => {
   if (user) {
     return (
       <>
+      
         <Dashboard 
           user={user} 
           onLogout={logout}
