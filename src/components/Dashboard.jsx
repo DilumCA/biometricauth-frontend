@@ -302,7 +302,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
 
       <header className="relative z-10 bg-white/10 backdrop-blur-xl border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative">
                 <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -321,21 +321,41 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
                 </p>
               </div>
             </div>
-            <button
-              onClick={async () => {
-                const confirmed = await showConfirm({
-                  title: 'Confirm Logout',
-                  message: 'Are you sure you want to log out?',
-                  confirmText: 'Logout',
-                  cancelText: 'Cancel'
-                });
-                if (confirmed) onLogout();
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all duration-300 group"
-            >
-              <LogOut className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
-              Logout
-            </button>
+            <div className="flex w-full sm:w-auto justify-end items-center">
+  {/* Icon-only button for mobile */}
+  <button
+    onClick={async () => {
+      const confirmed = await showConfirm({
+        title: 'Confirm Logout',
+        message: 'Are you sure you want to log out?',
+        confirmText: 'Logout',
+        cancelText: 'Cancel'
+      });
+      if (confirmed) onLogout();
+    }}
+    className="inline-flex sm:hidden items-center justify-center p-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all duration-300 group mt-4 sm:mt-0"
+    title="Logout"
+  >
+    <LogOut className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+    <span className="ml-2 text-sm font-medium">Logout</span>
+  </button>
+  {/* Full button for sm and up */}
+  <button
+    onClick={async () => {
+      const confirmed = await showConfirm({
+        title: 'Confirm Logout',
+        message: 'Are you sure you want to log out?',
+        confirmText: 'Logout',
+        cancelText: 'Cancel'
+      });
+      if (confirmed) onLogout();
+    }}
+    className="hidden sm:inline-flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all duration-300 group w-full sm:w-auto mt-4 sm:mt-0"
+  >
+    <LogOut className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
+    Logout
+  </button>
+</div>
           </div>
         </div>
       </header>
@@ -532,7 +552,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
                               <div className="flex items-center gap-4 text-sm text-white/60">
                                 <span>Added {new Date(device.createdAt).toLocaleDateString()}</span>
                                 <span>•</span>
-                                <span>Last used: {formatLastUsed(device.lastUsed)}</span>
+                                <span className="hidden sm:inline">Last used: {formatLastUsed(device.lastUsed)}</span>
                                 <span>•</span>
                                 <span className="capitalize">{device.type}</span>
                               </div>
