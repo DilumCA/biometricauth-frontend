@@ -41,6 +41,56 @@ function publicKeyCredentialToJSON(obj) {
   }
   return obj;
 }
+function getDeviceInfo() {
+  const userAgent = navigator.userAgent;
+  let deviceName = 'Unknown Device';
+  let deviceType = 'unknown';
+  
+  // Detect operating system
+  if (/iPhone|iPad|iPod/i.test(userAgent)) {
+    const match = userAgent.match(/iPhone OS (\d+_\d+)/);
+    const version = match ? match[1].replace('_', '.') : '';
+    deviceName = /iPad/i.test(userAgent) ? `iPad ${version}` : `iPhone ${version}`;
+    deviceType = 'mobile';
+  } else if (/Android/i.test(userAgent)) {
+    const match = userAgent.match(/Android (\d+\.?\d*)/);
+    const version = match ? match[1] : '';
+    deviceName = `Android ${version}`;
+    deviceType = 'mobile';
+  } else if (/Windows NT/i.test(userAgent)) {
+    const match = userAgent.match(/Windows NT (\d+\.?\d*)/);
+    const version = match ? match[1] : '';
+    deviceName = `Windows ${version}`;
+    deviceType = 'desktop';
+  } else if (/Mac OS X/i.test(userAgent)) {
+    const match = userAgent.match(/Mac OS X (\d+_\d+)/);
+    const version = match ? match[1].replace('_', '.') : '';
+    deviceName = `macOS ${version}`;
+    deviceType = 'desktop';
+  } else if (/Linux/i.test(userAgent)) {
+    deviceName = 'Linux';
+    deviceType = 'desktop';
+  }
+  
+  // Add browser info
+  let browser = 'Unknown Browser';
+  if (/Chrome/i.test(userAgent) && !/Edge/i.test(userAgent)) {
+    browser = 'Chrome';
+  } else if (/Firefox/i.test(userAgent)) {
+    browser = 'Firefox';
+  } else if (/Safari/i.test(userAgent) && !/Chrome/i.test(userAgent)) {
+    browser = 'Safari';
+  } else if (/Edge/i.test(userAgent)) {
+    browser = 'Edge';
+  }
+  
+  return {
+    name: `${deviceName} (${browser})`,
+    type: deviceType,
+    browser: browser,
+    userAgent: userAgent
+  };
+}
 
 const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -102,74 +152,76 @@ const AuthForm = () => {
     }
   };
 
-  const setupBiometric = async () => {
-    if (!user) {
-      showNotification('error', 'Please login first');
+ const setupBiometric = async () => {
+  if (!user) {
+    showNotification('error', 'Please login first');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const beginResponse = await fetch(`${API_BASE}/webauthn/register/begin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username: user.username }),
+    });
+
+    const beginData = await beginResponse.json();
+    if (!beginData.success) {
+      showNotification('error', beginData.message);
       return;
     }
 
-    setLoading(true);
-    try {
-      const beginResponse = await fetch(`${API_BASE}/webauthn/register/begin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        ...beginData.options,
+        challenge: base64urlToBuffer(beginData.options.challenge),
+        user: {
+          ...beginData.options.user,
+          id: base64urlToBuffer(beginData.options.user.id),
         },
-        body: JSON.stringify({ username: user.username }),
-      });
+        excludeCredentials: beginData.options.excludeCredentials?.map(cred => ({
+          ...cred,
+          id: base64urlToBuffer(cred.id),
+        })),
+      },
+    });
 
-      const beginData = await beginResponse.json();
-      if (!beginData.success) {
-        showNotification('error', beginData.message);
-        return;
-      }
+    const credentialJSON = publicKeyCredentialToJSON(credential);
+    const deviceInfo = getDeviceInfo(); // Get device information
 
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          ...beginData.options,
-          challenge: base64urlToBuffer(beginData.options.challenge),
-          user: {
-            ...beginData.options.user,
-            id: base64urlToBuffer(beginData.options.user.id),
-          },
-          excludeCredentials: beginData.options.excludeCredentials?.map(cred => ({
-            ...cred,
-            id: base64urlToBuffer(cred.id),
-          })),
-        },
-      });
+    const finishResponse = await fetch(`${API_BASE}/webauthn/register/finish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: user.username,
+        credential: credentialJSON,
+        deviceInfo: deviceInfo, // Send device info
+      }),
+    });
 
-      const credentialJSON = publicKeyCredentialToJSON(credential);
-
-      const finishResponse = await fetch(`${API_BASE}/webauthn/register/finish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: user.username,
-          credential: credentialJSON,
-        }),
-      });
-
-      const finishData = await finishResponse.json();
-      if (finishData.success) {
-        showNotification('success', 'Biometric authentication setup successful!');
-        setUser(prev => ({ ...prev, hasPasskeys: true }));
-      } else {
-        showNotification('error', finishData.message);
-      }
-    } catch (error) {
-      console.error('Biometric setup error:', error);
-      if (error.name === 'NotSupportedError') {
-        showNotification('error', 'Biometric authentication is not supported on this device.');
-      } else if (error.name === 'NotAllowedError') {
-        showNotification('warning', 'Biometric setup was cancelled.');
-      } else {
-        showNotification('error', 'Biometric setup failed. Please try again.');
-      }
-    } finally {
-      setLoading(false);
+    const finishData = await finishResponse.json();
+    if (finishData.success) {
+      showNotification('success', `Biometric authentication setup successful! Device "${finishData.device?.name}" has been registered.`);
+      setUser(prev => ({ ...prev, hasPasskeys: true }));
+    } else {
+      showNotification('error', finishData.message);
     }
-  };
+  } catch (error) {
+    console.error('Biometric setup error:', error);
+    if (error.name === 'NotSupportedError') {
+      showNotification('error', 'Biometric authentication is not supported on this device.');
+    } else if (error.name === 'NotAllowedError') {
+      showNotification('warning', 'Biometric setup was cancelled.');
+    } else {
+      showNotification('error', 'Biometric setup failed. Please try again.');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   const biometricLogin = async () => {
   if (!formData.username) {
@@ -293,12 +345,13 @@ const AuthForm = () => {
                     <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 animate-pulse" />
                   </div>
                 </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                    Welcome Back
-                  </h1>
-                  <p className="text-gray-300 text-sm sm:text-base">
-                    {isLogin ? 'Sign in to your secure account' : 'Create your secure account'}
+                
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+                      {isLogin ? ('Welcome Back') : ('Welcome')}
+                    </h1>
+                    <p className="text-gray-300 text-sm sm:text-base">
+                      {isLogin ? 'Sign in to your secure account' : 'Create your secure account'}
                   </p>
                 </div>
               </div>

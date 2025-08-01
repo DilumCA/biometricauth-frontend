@@ -15,18 +15,107 @@ import {
   Lock,
   Activity,
   Calendar,
-  Sparkles
+  Sparkles,
+  Smartphone,
+  Monitor,
+  Tablet,
+  Chrome,
+  Globe,
+  AlertTriangle,
+  X
 } from 'lucide-react';
+import { useNotification } from './Notification';
 
 const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
   const [userInfo, setUserInfo] = useState(null);
+  const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null); // Add this line
 
-  // Use environment variable with fallback
+  const { showNotification, NotificationComponent } = useNotification();
   const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/auth`;
+
+  // Add this function
+  const showConfirm = (options) => {
+    return new Promise((resolve) => {
+      setConfirmDialog({
+        ...options,
+        onConfirm: () => {
+          setConfirmDialog(null);
+          resolve(true);
+        },
+        onCancel: () => {
+          setConfirmDialog(null);
+          resolve(false);
+        }
+      });
+    });
+  };
+
+  // Add this component
+  const ConfirmDialog = () => {
+    if (!confirmDialog) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={confirmDialog.onCancel}
+        />
+        
+        {/* Dialog */}
+        <div className="relative bg-gradient-to-br from-red-500/20 to-red-600/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-red-500/30 p-8 max-w-md mx-4">
+          {/* Close button */}
+          <button
+            onClick={confirmDialog.onCancel}
+            className="absolute top-4 right-4 p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          {/* Icon */}
+          <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mb-6">
+            <AlertTriangle className="w-8 h-8 text-red-400" />
+          </div>
+
+          {/* Title */}
+          <h3 className="text-2xl font-bold text-red-100 mb-4">
+            {confirmDialog.title}
+          </h3>
+
+          {/* Message */}
+          <div className="text-white/80 mb-8 leading-relaxed">
+            {typeof confirmDialog.message === 'string' ? (
+              <p>{confirmDialog.message}</p>
+            ) : (
+              confirmDialog.message
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-4">
+            <button
+              onClick={confirmDialog.onCancel}
+              className="flex-1 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all duration-300 font-medium"
+            >
+              {confirmDialog.cancelText || 'Cancel'}
+            </button>
+            <button
+              onClick={confirmDialog.onConfirm}
+              className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium shadow-lg hover:shadow-xl"
+            >
+              {confirmDialog.confirmText || 'Confirm'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     fetchUserInfo();
+    fetchDevices();
   }, [user]);
 
   const fetchUserInfo = async () => {
@@ -42,26 +131,175 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
     }
   };
 
-  const handleRemoveBiometric = async () => {
-    if (!confirm('Are you sure you want to remove biometric authentication? You will need to set it up again.')) {
-      return;
+  const fetchDevices = async () => {
+    if (!userInfo?.hasPasskeys) return;
+    
+    try {
+      const response = await fetch(`${API_BASE}/user/${user.username}/devices`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setDevices(data.devices);
+      }
+    } catch (error) {
+      console.error('Error fetching devices:', error);
     }
+  };
 
-    // Note: This would require a backend endpoint to remove credentials
-    // For now, we'll just show a placeholder
-    alert('Remove biometric functionality would need to be implemented in the backend.');
+  // Re-fetch devices when userInfo changes
+  useEffect(() => {
+    if (userInfo?.hasPasskeys) {
+      fetchDevices();
+    }
+  }, [userInfo?.hasPasskeys]);
+
+  const handleDeleteDevice = async (deviceId) => {
+    const device = devices.find(d => d.id === deviceId);
+    const deviceName = device?.name || 'this device';
+
+    const confirmed = await showConfirm({
+      title: 'Remove Biometric Device',
+      message: (
+        <div>
+          <p className="mb-4">
+            Are you sure you want to remove "<strong>{deviceName}</strong>" from your account?
+          </p>
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4">
+            <p className="text-yellow-200 text-sm flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              You will need to re-register this device to use biometric authentication again.
+            </p>
+          </div>
+        </div>
+      ),
+      confirmText: 'Remove Device',
+      cancelText: 'Keep Device'
+    });
+
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/webauthn/device/${user.username}/${deviceId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        showNotification('success', `Successfully removed "${deviceName}"`);
+        await fetchUserInfo();
+        await fetchDevices();
+      } else {
+        showNotification('error', data.message);
+      }
+    } catch (error) {
+      console.error('Error deleting device:', error);
+      showNotification('error', 'Failed to remove device. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveAllBiometrics = async () => {
+    const confirmed = await showConfirm({
+      title: 'Remove All Biometric Devices',
+      message: (
+        <div>
+          <p className="mb-4">
+            This action will remove <strong>ALL {userInfo?.credentialCount || 0} biometric device(s)</strong> from your account.
+          </p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
+            <p className="text-red-200 text-sm flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              This will completely disable biometric authentication for your account.
+            </p>
+          </div>
+          <p className="text-sm text-white/70">
+            You will need to set up biometric authentication from scratch if you want to use it again.
+          </p>
+        </div>
+      ),
+      confirmText: 'Remove All Devices',
+      cancelText: 'Cancel',
+      type: 'danger',
+      icon: AlertTriangle
+    });
+
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/webauthn/credentials/${user.username}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        showNotification('success', 'All biometric devices removed successfully');
+        await fetchUserInfo();
+        setDevices([]);
+      } else {
+        showNotification('error', data.message);
+      }
+    } catch (error) {
+      console.error('Error removing all biometrics:', error);
+      showNotification('error', 'Failed to remove biometric authentication');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDeviceIcon = (deviceType, authenticatorType) => {
+    if (authenticatorType === 'platform') {
+      switch (deviceType) {
+        case 'mobile':
+          return <Smartphone className="w-5 h-5 text-purple-400" />;
+        case 'tablet':
+          return <Tablet className="w-5 h-5 text-purple-400" />;
+        case 'desktop':
+          return <Monitor className="w-5 h-5 text-purple-400" />;
+        default:
+          return <Fingerprint className="w-5 h-5 text-purple-400" />;
+      }
+    } else {
+      return <Key className="w-5 h-5 text-blue-400" />;
+    }
+  };
+
+  const getBrowserIcon = (browser) => {
+    switch (browser?.toLowerCase()) {
+      case 'chrome':
+        return <Chrome className="w-4 h-4 text-gray-400" />;
+      default:
+        return <Globe className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const formatLastUsed = (lastUsed) => {
+    if (!lastUsed) return 'Never used';
+    
+    const date = new Date(lastUsed);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      {/* Animated background elements */}
+      {/* ... existing background and header code ... */}
       <div className="absolute inset-0">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl animate-pulse delay-500"></div>
       </div>
 
-      {/* Header */}
       <header className="relative z-10 bg-white/10 backdrop-blur-xl border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
@@ -76,7 +314,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white mb-1">
-                  Biometric Dashboard
+                   Dashboard
                 </h1>
                 <p className="text-white/60">
                   Manage your secure authentication
@@ -96,7 +334,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Profile Card */}
+          {/* ... existing profile card and security overview code ... */}
           <div className="lg:col-span-2 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-6">
@@ -158,7 +396,6 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
             </div>
           </div>
 
-          {/* Security Overview */}
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center">
@@ -192,7 +429,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
                   )}
                 </div>
                 <p className="text-white/60 text-sm">
-                  {userInfo?.hasPasskeys ? 'TouchID/FaceID active' : 'Not configured'}
+                  {userInfo?.hasPasskeys ? `${userInfo.credentialCount} device(s) registered` : 'Not configured'}
                 </p>
               </div>
 
@@ -213,7 +450,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
             </div>
           </div>
 
-          {/* Biometric Management */}
+          {/* Enhanced Biometric Management */}
           <div className="lg:col-span-3 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
@@ -236,7 +473,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
                       <h4 className="text-lg font-bold text-green-100 mb-2">Biometric Authentication Active</h4>
                       <p className="text-green-200/80 mb-4">
                         You can now sign in using your fingerprint or face recognition. 
-                        You have <span className="font-semibold text-green-100">{userInfo.credentialCount}</span> biometric credential(s) registered.
+                        You have <span className="font-semibold text-green-100">{userInfo.credentialCount}</span> biometric device(s) registered.
                       </p>
                       <div className="flex flex-wrap gap-3">
                         <button
@@ -247,17 +484,65 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
                           <Plus className="w-4 h-4" />
                           Add Device
                         </button>
-                        <button
-                          onClick={handleRemoveBiometric}
-                          className="flex items-center gap-2 px-6 py-3 bg-red-500/20 text-red-200 rounded-xl hover:bg-red-500/30 transition-colors border border-red-500/30"
+                        {/* <button
+                          onClick={handleRemoveAllBiometrics}
+                          disabled={loading}
+                          className="flex items-center gap-2 px-6 py-3 bg-red-500/20 text-red-200 rounded-xl hover:bg-red-500/30 transition-colors border border-red-500/30 disabled:opacity-50"
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove All
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Device List */}
+                {devices.length > 0 && (
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                    <h5 className="text-white font-semibold mb-4 flex items-center gap-2">
+                      <Shield className="w-5 h-5" />
+                      Registered Devices ({devices.length})
+                    </h5>
+                    <div className="space-y-3">
+                      {devices.map((device) => (
+                        <div key={device.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                              {getDeviceIcon(device.type, device.authenticatorType)}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-white font-medium">{device.name}</p>
+                                {device.browser && (
+                                  <div className="flex items-center gap-1">
+                                    {getBrowserIcon(device.browser)}
+                                    <span className="text-xs text-gray-400">{device.browser}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-white/60">
+                                <span>Added {new Date(device.createdAt).toLocaleDateString()}</span>
+                                <span>•</span>
+                                <span>Last used: {formatLastUsed(device.lastUsed)}</span>
+                                <span>•</span>
+                                <span className="capitalize">{device.type}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteDevice(device.id)}
+                            disabled={loading}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            title="Remove this device"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-6">
@@ -288,7 +573,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
             )}
           </div>
 
-          {/* Quick Actions */}
+          {/* ... existing Quick Actions section ... */}
           <div className="lg:col-span-3 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center">
@@ -328,6 +613,9 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
           </div>
         </div>
       </div>
+
+      <NotificationComponent />
+      <ConfirmDialog />
     </div>
   );
 };
