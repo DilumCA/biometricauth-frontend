@@ -322,7 +322,15 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
               </div>
             </div>
             <button
-              onClick={onLogout}
+              onClick={async () => {
+                const confirmed = await showConfirm({
+                  title: 'Confirm Logout',
+                  message: 'Are you sure you want to log out?',
+                  confirmText: 'Logout',
+                  cancelText: 'Cancel'
+                });
+                if (confirmed) onLogout();
+              }}
               className="flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-all duration-300 group"
             >
               <LogOut className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
@@ -332,10 +340,10 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
         </div>
       </header>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
-        <div className="grid gap-6 lg:grid-cols-3">
+      <div className="relative z-10 max-w-6xl w-full mx-auto px-2 sm:px-4 py-6 overflow-x-hidden box-border">
+        <div className="grid gap-4 lg:gap-6 lg:grid-cols-3 w-full overflow-x-auto min-w-0">
           {/* ... existing profile card and security overview code ... */}
-          <div className="lg:col-span-2 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8">
+          <div className="lg:col-span-2 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-4 sm:p-6 md:p-8 w-full min-w-0 overflow-x-auto">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-6">
                 <div className="relative">
@@ -396,7 +404,7 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6">
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-4 sm:p-6 w-full min-w-0 overflow-x-auto">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center">
                 <Shield className="w-6 h-6 text-white" />
