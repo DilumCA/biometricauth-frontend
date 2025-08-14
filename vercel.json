@@ -9,7 +9,7 @@
         },
         { 
           "key": "Content-Security-Policy", 
-          "value": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://biometricauth-backend-production.up.railway.app; script-src 'self' 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'none'; form-action 'self';" 
+          "value": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://biometricauth-backend-production.up.railway.app; script-src 'self' 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none';" 
         },
         { 
           "key": "X-Frame-Options", 
@@ -33,7 +33,15 @@
         },
         { 
           "key": "Permissions-Policy", 
-          "value": "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()" 
+          "value": "publickey-credentials-get=*, publickey-credentials-create=*, geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()" 
+        },
+        { 
+          "key": "Cross-Origin-Embedder-Policy", 
+          "value": "require-corp" 
+        },
+        { 
+          "key": "Cross-Origin-Opener-Policy", 
+          "value": "same-origin" 
         }
       ]
     },
@@ -66,7 +74,37 @@
   ],
   "redirects": [
     {
-      "source": "/(.*(?:\\.bzr|\\.hg|\\.darcs|BitKeeper|\\._darcs|\\.svn|\\.git).*)",
+      "source": "/\\.bzr/:path*",
+      "destination": "/404",
+      "statusCode": 404
+    },
+    {
+      "source": "/\\.hg/:path*",
+      "destination": "/404",
+      "statusCode": 404
+    },
+    {
+      "source": "/\\.darcs/:path*",
+      "destination": "/404",
+      "statusCode": 404
+    },
+    {
+      "source": "/BitKeeper/:path*",
+      "destination": "/404",
+      "statusCode": 404
+    },
+    {
+      "source": "/\\._darcs/:path*",
+      "destination": "/404",
+      "statusCode": 404
+    },
+    {
+      "source": "/\\.svn/:path*",
+      "destination": "/404",
+      "statusCode": 404
+    },
+    {
+      "source": "/\\.git/:path*",
       "destination": "/404",
       "statusCode": 404
     }
