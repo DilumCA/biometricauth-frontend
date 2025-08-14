@@ -5,7 +5,7 @@
       "headers": [
         { 
           "key": "Content-Security-Policy", 
-          "value": "default-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://biometricauth-backend-production.up.railway.app; script-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none';" 
+          "value": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://biometricauth-backend-production.up.railway.app; script-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none';" 
         },
         { 
           "key": "X-Frame-Options", 
@@ -38,6 +38,10 @@
         { 
           "key": "Cross-Origin-Opener-Policy", 
           "value": "same-origin" 
+        },
+        { 
+          "key": "Access-Control-Allow-Origin", 
+          "value": "https://biometricauth-frontend.vercel.app" 
         }
       ]
     },
@@ -55,6 +59,10 @@
         { 
           "key": "X-Content-Type-Options", 
           "value": "nosniff" 
+        },
+        { 
+          "key": "Access-Control-Allow-Origin", 
+          "value": "https://biometricauth-frontend.vercel.app" 
         }
       ]
     }
