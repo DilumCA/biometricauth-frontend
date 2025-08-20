@@ -3,7 +3,7 @@ import LoginForm from '../components/LoginForm';
 import CombinedAuthForm from '../components/CombinedAuthForm';
 
 function LoginPage() {
-  return <LoginForm />;
+  return <CombinedAuthForm />;
 }
 
 export default LoginPage;
