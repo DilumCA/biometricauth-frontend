@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: #213547;           /* <-- Changed from rgba(255,255,255,0.87) */
-  background-color: #fff;   /* <-- Ensure background is white */
+  /* ✅ Force dark color scheme always */
+  color-scheme: dark !important;
+  color: #ffffff !important;
+  background-color: #0f172a !important;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -16,20 +16,34 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* ✅ Override the light mode media query to maintain dark theme */
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Keep dark theme even in light mode */
+    color-scheme: dark !important;
+    color: #ffffff !important;
+    background-color: #0f172a !important;
+  }
+  
+  body {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+  }
+  
+  /* Prevent iOS from applying light button styles */
+  button {
+    background-color: transparent !important;
+    color: inherit !important;
+    -webkit-appearance: none !important;
+  }
 }
-a:hover {
-  color: #535bf2;
-} */
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: #0f172a !important;
+  color: #ffffff !important;
 }
 
 h1 {
@@ -44,7 +58,6 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
- 
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -58,12 +71,11 @@ button:focus-visible {
 
 /* Add these utility classes for button borders by color */
 .button-blue {
-  
   color: #3b82f6;
   background: transparent;
 }
 .button-blue:hover {
-  background: #daeaff;
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .button-red {
@@ -71,48 +83,89 @@ button:focus-visible {
   background: transparent;
 }
 .button-red:hover {
-  background: #fef2f2;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .button-gray {
-  border: 1px solid #6b7280; /* Tailwind gray-500 */
-  color: #374151;
+  border: 1px solid #6b7280;
+  color: #9ca3af;
   background: transparent;
 }
 .button-gray:hover {
-  background: #f3f4f6;
+  background: rgba(107, 114, 128, 0.1);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* ✅ iOS Safari Light Mode Override */
+@media (prefers-color-scheme: light) and (-webkit-touch-callout: none) {
+  /* Force dark theme elements to stay dark even in light mode */
+  .bg-gradient-to-br {
+    background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a) !important;
   }
-  a:hover {
-    color: #747bff;
-  }
+  
+  /* Override iOS light mode button styling */
   button {
-    background-color: #f9f9f9;
+    -webkit-appearance: none !important;
+    background-color: transparent !important;
+    color: inherit !important;
+  }
+  
+  /* Force glassmorphism to work in light mode */
+  .bg-white\/10 {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+  
+  .bg-white\/5 {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+  
+  /* Force text colors to stay white on dark backgrounds */
+  .text-white {
+    color: #ffffff !important;
+  }
+  
+  .text-white\/60 {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+  
+  .text-white\/70 {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+  
+  .text-white\/90 {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  /* Override border colors */
+  .border-white\/10 {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  .border-white\/20 {
+    border-color: rgba(255, 255, 255, 0.2) !important;
   }
 }
 
 /* Add this to your global CSS file (e.g., index.css or App.css) */
 ::-webkit-scrollbar {
   width: 8px;
-  background: #f3f4f6; /* light gray */
+  background: rgba(255, 255, 255, 0.1);
 }
 ::-webkit-scrollbar-thumb {
-  background: #e5e7eb; /* even lighter gray */
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #d1d5db;
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* For Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #e5e7eb #f3f4f6;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.1);
 }
 .sidebar-scroll {
   scrollbar-width: thin;
@@ -127,13 +180,16 @@ button:focus-visible {
   background-color: #3b82f6;
   border-radius: 3px;
 }
+
+/* ✅ Updated autofill styling for dark theme */
 input:-webkit-autofill,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
-  box-shadow: 0 0 0 1000px #fff inset !important;
-  -webkit-text-fill-color: #111 !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.1) inset !important;
+  box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.1) inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -151,4 +207,147 @@ input:-webkit-autofill:active {
 
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+/* ✅ iOS-SPECIFIC BUTTON RESET */
+/* iOS Safari button reset - fixes white button issue */
+@supports (-webkit-touch-callout: none) {
+  /* Target iOS Safari specifically */
+  button,
+  input[type="button"], 
+  input[type="submit"],
+  input[type="reset"] {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+  }
+  
+  /* Fix for dashboard logout button */
+  .dashboard-button {
+    -webkit-appearance: none !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  /* Fix for quick action buttons */
+  .dashboard-quick-action {
+    -webkit-appearance: none !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  /* Force Tailwind background opacity classes to work on iOS */
+  .bg-white\/10 {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  .bg-white\/5 {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+  }
+  
+  .bg-white\/20 {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  /* Ensure gradient backgrounds work */
+  .bg-gradient-to-r {
+    background: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+  }
+  
+  .bg-gradient-to-br {
+    background: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+  }
+  
+  /* Fix for any button with glassmorphism effect */
+  .backdrop-blur-sm,
+  .backdrop-blur-xl {
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+}
+
+/* Additional fallback for all iOS devices */
+@media only screen and (max-device-width: 812px) and (-webkit-min-device-pixel-ratio: 2) {
+  button {
+    -webkit-appearance: none !important;
+  }
+  
+  /* Specific targeting for your dashboard buttons */
+  button[class*="bg-white/"] {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  button[class*="dashboard"] {
+    -webkit-appearance: none !important;
+    border: none !important;
+  }
+}
+
+/* ✅ Comprehensive iOS Light Mode Fix */
+/* Detect iOS devices more accurately */
+@supports (-webkit-touch-callout: none) {
+  /* This targets iOS specifically */
+  
+  /* Force dark theme components */
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  
+  /* Override any system styling */
+  .bg-gradient-to-br,
+  .bg-gradient-to-r {
+    background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a) !important;
+  }
+  
+  /* Force all white/opacity backgrounds to work */
+  [class*="bg-white/"] {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+  
+  /* Force all text to stay white */
+  [class*="text-white"] {
+    color: #ffffff !important;
+  }
+  
+  /* Force all borders to stay transparent white */
+  [class*="border-white/"] {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  /* Override input styling */
+  input, textarea, select {
+    -webkit-appearance: none !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  /* Override button styling completely */
+  button {
+    -webkit-appearance: none !important;
+    background: none !important;
+    border: none !important;
+    color: inherit !important;
+  }
+}
+
+/* Force dark theme on ALL iOS devices regardless of system preference */
+@media only screen and (-webkit-min-device-pixel-ratio: 2) {
+  html, body {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+  }
+  
+  /* Override WebKit autofill more aggressively */
+  input:-webkit-autofill,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.1) inset !important;
+    box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.1) inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
 }
