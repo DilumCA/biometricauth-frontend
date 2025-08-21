@@ -65,51 +65,48 @@ const CombinedAuthForm = () => {
     });
   };
 
-  const handleTraditionalAuth = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+ const handleTraditionalAuth = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      const endpoint = isLogin ? '/login' : '/signup';
-      const body = isLogin 
-        ? { username: formData.username, password: formData.password }
-        : formData;
+  try {
+    const endpoint = isLogin ? '/login' : '/signup';
+    const body = isLogin 
+      ? { username: formData.username, password: formData.password }
+      : formData;
 
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (data.success) {
-        if (isLogin) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-          showNotification('success', data.message);
-          navigate('/dashboard');
-        } else {
-          showNotification('success', data.message);
-          setIsLogin(true); // Switch to login after successful signup
-          setFormData({
-            firstname: '',
-            lastname: '',
-            username: '',
-            password: ''
-          });
-        }
+    if (data.success) {
+      if (isLogin) {
+        // Login: Store user and go to dashboard
+        localStorage.setItem('user', JSON.stringify(data.user));
+        showNotification('success', data.message);
+        navigate('/dashboard');
       } else {
-        showNotification('error', data.message);
+        // ✅ Signup: Store user and go directly to dashboard
+        localStorage.setItem('user', JSON.stringify(data.user));
+        showNotification('success', data.message);
+        navigate('/dashboard');
       }
-    } catch (error) {
-      console.error('Authentication error:', error);
-      showNotification('error', 'Network error. Please try again.');
-    } finally {
-      setLoading(false);
+    } else {
+      showNotification('error', data.message);
     }
-  };
+  } catch (error) {
+    console.error('Authentication error:', error);
+    showNotification('error', 'Network error. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const biometricLogin = async () => {
     if (!formData.username) {
