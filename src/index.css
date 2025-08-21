@@ -152,3 +152,72 @@ input:-webkit-autofill:active {
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
+/* ✅ ADD THIS iOS-SPECIFIC BUTTON RESET */
+/* iOS Safari button reset - fixes white button issue */
+@supports (-webkit-touch-callout: none) {
+  /* Target iOS Safari specifically */
+  button,
+  input[type="button"], 
+  input[type="submit"],
+  input[type="reset"] {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+  }
+  
+  /* Fix for dashboard logout button */
+  .dashboard-button {
+    -webkit-appearance: none !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  /* Fix for quick action buttons */
+  .dashboard-quick-action {
+    -webkit-appearance: none !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  /* Force Tailwind background opacity classes to work on iOS */
+  .bg-white\/10 {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  .bg-white\/5 {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+  }
+  
+  .bg-white\/20 {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  /* Ensure gradient backgrounds work */
+  .bg-gradient-to-r {
+    background: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+  }
+  
+  /* Fix for any button with glassmorphism effect */
+  .backdrop-blur-sm,
+  .backdrop-blur-xl {
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+}
+
+/* Additional fallback for all iOS devices */
+@media only screen and (max-device-width: 812px) and (-webkit-min-device-pixel-ratio: 2) {
+  button {
+    -webkit-appearance: none !important;
+  }
+  
+  /* Specific targeting for your dashboard buttons */
+  button[class*="bg-white/"] {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  button[class*="dashboard"] {
+    -webkit-appearance: none !important;
+    border: none !important;
+  }
+}
