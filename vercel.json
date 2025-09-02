@@ -5,103 +5,17 @@
       "headers": [
         { 
           "key": "Content-Security-Policy", 
-          "value": "default-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://biometricauth-backend-production.up.railway.app; script-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none';" 
-        },
-        { 
-          "key": "X-Frame-Options", 
-          "value": "DENY" 
-        },
-        { 
-          "key": "Strict-Transport-Security", 
-          "value": "max-age=63072000; includeSubDomains; preload" 
+          "value": "default-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://biometricauth-backend-production.up.railway.app https://ipapi.co https://nominatim.openstreetmap.org http://localhost:5000; script-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none';" 
         },
         { 
           "key": "X-Content-Type-Options", 
           "value": "nosniff" 
-        },
-        { 
-          "key": "X-XSS-Protection", 
-          "value": "1; mode=block" 
-        },
-        { 
-          "key": "Referrer-Policy", 
-          "value": "strict-origin-when-cross-origin" 
         },
         { 
           "key": "Permissions-Policy", 
-          "value": "publickey-credentials-get=*, publickey-credentials-create=*, geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()" 
-        },
-        { 
-          "key": "Cross-Origin-Embedder-Policy", 
-          "value": "require-corp" 
-        },
-        { 
-          "key": "Cross-Origin-Opener-Policy", 
-          "value": "same-origin" 
-        },
-        { 
-          "key": "Access-Control-Allow-Origin", 
-          "value": "https://biometricauth-frontend.vercel.app" 
+          "value": "publickey-credentials-get=*, publickey-credentials-create=*, geolocation=*, microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()" 
         }
       ]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        { 
-          "key": "Cache-Control", 
-          "value": "public, max-age=31536000, immutable" 
-        },
-        { 
-          "key": "Strict-Transport-Security", 
-          "value": "max-age=63072000; includeSubDomains; preload" 
-        },
-        { 
-          "key": "X-Content-Type-Options", 
-          "value": "nosniff" 
-        },
-        { 
-          "key": "Access-Control-Allow-Origin", 
-          "value": "https://biometricauth-frontend.vercel.app" 
-        }
-      ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/.bzr",
-      "destination": "/404",
-      "statusCode": 404
-    },
-    {
-      "source": "/.hg",
-      "destination": "/404",
-      "statusCode": 404
-    },
-    {
-      "source": "/.darcs",
-      "destination": "/404",
-      "statusCode": 404
-    },
-    {
-      "source": "/._darcs",
-      "destination": "/404",
-      "statusCode": 404
-    },
-    {
-      "source": "/BitKeeper",
-      "destination": "/404",
-      "statusCode": 404
-    },
-    {
-      "source": "/.svn",
-      "destination": "/404",
-      "statusCode": 404
-    },
-    {
-      "source": "/.git",
-      "destination": "/404",
-      "statusCode": 404
     }
   ],
   "rewrites": [
