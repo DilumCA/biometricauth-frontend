@@ -43,6 +43,86 @@ function bufferToBase64url(buffer) {
     .replace(/=+$/, '');
 }
 
+// Function to get browser geolocation
+// In your frontend code where you get browser location
+const getBrowserLocation = async () => {
+  // First try browser geolocation API (precise, but requires permission)
+  if (navigator.geolocation) {
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          position => resolve(position),
+          error => reject(error),
+          { timeout: 10000, enableHighAccuracy: true }
+        );
+      });
+      
+      // Get the coordinates
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      };
+      
+      // Add reverse geocoding to get actual location names
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`
+        );
+        
+        if (response.ok) {
+          const locationData = await response.json();
+          
+          return {
+            ...coords,
+            city: locationData.address.city || locationData.address.town || locationData.address.village || 'Unknown',
+            region: locationData.address.state || locationData.address.county || 'Unknown',
+            country_name: locationData.address.country || 'Unknown',
+            source: 'browser-geolocation'
+          };
+        }
+      } catch (geocodeError) {
+        console.error("Reverse geocoding failed:", geocodeError);
+      }
+      
+      // Return coordinates with placeholder names if geocoding fails
+      return {
+        ...coords,
+        city: "Browser Location", 
+        region: "Geolocation API",
+        country_name: "Browser Provided",
+        source: 'browser-geolocation'
+      };
+    } catch (error) {
+      console.log("Browser geolocation permission denied or error:", error);
+      // Fall through to IP-based geolocation
+    }
+  }
+  
+  // Fallback: IP-based geolocation (less precise, but doesn't require permission)
+  try {
+    console.log("Falling back to IP-based geolocation");
+    const response = await fetch('https://ipapi.co/json/');
+    
+    if (response.ok) {
+      const ipData = await response.json();
+      
+      return {
+        latitude: ipData.latitude,
+        longitude: ipData.longitude,
+        city: ipData.city || 'Unknown',
+        region: ipData.region || ipData.region_code || 'Unknown',
+        country_name: ipData.country_name || 'Unknown',
+        source: 'ip-geolocation'
+      };
+    }
+  } catch (ipError) {
+    console.error("IP geolocation failed:", ipError);
+  }
+  
+  // If all methods fail, return null
+  return null;
+};
 const CombinedAuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -51,6 +131,7 @@ const CombinedAuthForm = () => {
     firstname: '',
     lastname: '',
     username: '',
+    email: '',
     password: ''
   });
 
@@ -65,49 +146,164 @@ const CombinedAuthForm = () => {
     });
   };
 
- const handleTraditionalAuth = async (e) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleTraditionalAuth = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    const endpoint = isLogin ? '/login' : '/signup';
-    const body = isLogin 
-      ? { username: formData.username, password: formData.password }
-      : formData;
-
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      if (isLogin) {
-        // Login: Store user and go to dashboard
-        localStorage.setItem('user', JSON.stringify(data.user));
-        showNotification('success', data.message);
-        navigate('/dashboard');
-      } else {
-        // ✅ Signup: Store user and go directly to dashboard
-        localStorage.setItem('user', JSON.stringify(data.user));
-        showNotification('success', data.message);
-        navigate('/dashboard');
+    try {
+      // Get browser location if available
+      let browserLocation = null;
+      if (isLogin) { // Only get location for login, not signup
+        browserLocation = await getBrowserLocation();
       }
-    } else {
-      showNotification('error', data.message);
-    }
-  } catch (error) {
-    console.error('Authentication error:', error);
-    showNotification('error', 'Network error. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
 
+      const endpoint = isLogin ? '/login' : '/signup';
+      const body = isLogin 
+        ? { 
+            username: formData.username, 
+            password: formData.password,
+            browserLocation // Include location data if available
+          }
+        : {
+            firstname: formData.firstname,
+            lastname: formData.lastname,
+            username: formData.username,
+            email: formData.email,
+            password: formData.password
+          };
+
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (isLogin) {
+          // Login: Store user and go to dashboard
+          localStorage.setItem('user', JSON.stringify(data.user));
+          showNotification('success', data.message);
+          navigate('/dashboard');
+        } else {
+          // ✅ Signup: Store user and go directly to dashboard
+          localStorage.setItem('user', JSON.stringify(data.user));
+          showNotification('success', data.message);
+          navigate('/dashboard');
+        }
+      } else {
+        showNotification('error', data.message);
+      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      showNotification('error', 'Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Device info extraction for registration
+  const getDeviceInfo = () => {
+    const userAgent = navigator.userAgent;
+    let deviceName = 'Unknown Device';
+    let deviceType = 'unknown';
+    let browser = 'Unknown Browser';
+    if (/iPhone|iPad|iPod/i.test(userAgent)) {
+      deviceName = /iPad/i.test(userAgent) ? 'iPad' : 'iPhone';
+      deviceType = 'mobile';
+    } else if (/Android/i.test(userAgent)) {
+      deviceName = 'Android Device';
+      deviceType = 'mobile';
+    } else if (/Windows/i.test(userAgent)) {
+      deviceName = 'Windows Device';
+      deviceType = 'desktop';
+    } else if (/Mac/i.test(userAgent)) {
+      deviceName = 'Mac Device';
+      deviceType = 'desktop';
+    } else if (/Linux/i.test(userAgent)) {
+      deviceName = 'Linux Device';
+      deviceType = 'desktop';
+    }
+    if (/Chrome/i.test(userAgent) && !/Edg|Edge/i.test(userAgent)) {
+      browser = 'Chrome';
+    } else if (/Firefox/i.test(userAgent)) {
+      browser = 'Firefox';
+    } else if (/Safari/i.test(userAgent) && !/Chrome/i.test(userAgent)) {
+      browser = 'Safari';
+    } else if (/Edg|Edge/i.test(userAgent)) {
+      browser = 'Edge';
+    }
+    return {
+      name: `${deviceName} (${browser})`,
+      type: deviceType,
+      browser,
+      userAgent
+    };
+  };
+ 
+  // Biometric registration
+  const biometricRegister = async () => {
+    if (!formData.username) {
+      showNotification('warning', 'Please enter your username first');
+      return;
+    }
+    setLoading(true);
+    try {
+      const beginResponse = await fetch(`${API_BASE}/webauthn/register/begin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username: formData.username }),
+      });
+      const beginData = await beginResponse.json();
+      if (!beginData.success) {
+        showNotification('error', beginData.message);
+        return;
+      }
+      const publicKeyOptions = {
+        ...beginData.options,
+        challenge: base64urlToBuffer(beginData.options.challenge),
+        user: {
+          ...beginData.options.user,
+          id: base64urlToBuffer(beginData.options.user.id),
+        },
+        excludeCredentials: beginData.options.excludeCredentials?.map(cred => ({
+          ...cred,
+          id: base64urlToBuffer(cred.id),
+        })),
+      };
+      const credential = await navigator.credentials.create({ publicKey: publicKeyOptions });
+      const credentialJSON = publicKeyCredentialToJSON(credential);
+      const deviceInfo = getDeviceInfo();
+      const finishResponse = await fetch(`${API_BASE}/webauthn/register/finish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          credential: credentialJSON,
+          deviceInfo
+        }),
+      });
+      const finishData = await finishResponse.json();
+      if (finishData.success) {
+        showNotification('success', finishData.message || 'Biometric registration successful!');
+      } else {
+        showNotification('error', finishData.message || 'Biometric registration failed.');
+      }
+    } catch (error) {
+      console.error('Biometric registration error:', error);
+      showNotification('error', 'Biometric registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const biometricLogin = async () => {
     if (!formData.username) {
       showNotification('warning', 'Please enter your username first');
@@ -116,12 +312,18 @@ const CombinedAuthForm = () => {
 
     setLoading(true);
     try {
+      // Get browser location if available
+      const browserLocation = await getBrowserLocation();
+      
       const beginResponse = await fetch(`${API_BASE}/webauthn/authenticate/begin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username: formData.username }),
+        body: JSON.stringify({ 
+          username: formData.username,
+          browserLocation // Include location data if available
+        }),
       });
 
       const beginData = await beginResponse.json();
@@ -151,9 +353,10 @@ const CombinedAuthForm = () => {
         body: JSON.stringify({
           username: formData.username,
           credential: assertionJSON,
+          browserLocation // Include location data if available
         }),
       });
-
+  
       const finishData = await finishResponse.json();
       if (finishData.success) {
         localStorage.setItem('user', JSON.stringify(finishData.user));
@@ -175,6 +378,7 @@ const CombinedAuthForm = () => {
       setLoading(false);
     }
   };
+  
 
   return (
     <>
@@ -242,6 +446,7 @@ const CombinedAuthForm = () => {
               {/* Form */}
               <form onSubmit={handleTraditionalAuth} className="space-y-4">
                 {!isLogin && (
+                  <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="block text-sm font-medium text-white/90">
@@ -272,6 +477,21 @@ const CombinedAuthForm = () => {
                       />
                     </div>
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-white/90">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2.5 sm:px-4 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent backdrop-blur-sm transition-all duration-300 text-sm"
+                      placeholder="you@email.com"
+                    />
+                  </div>
+                  </>
                 )}
 
                 <div className="space-y-1.5">
@@ -333,9 +553,10 @@ const CombinedAuthForm = () => {
                 </button>
               </form>
 
-              {/* Biometric login section - Only show for login */}
-              {isLogin && (
-                <div className="space-y-3">
+              {/* Biometric login/register section */}
+              <div className="space-y-3">
+                {isLogin ? (
+                  <>
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-white/20"></div>
@@ -346,7 +567,6 @@ const CombinedAuthForm = () => {
                       </span>
                     </div>
                   </div>
-
                   <button
                     onClick={biometricLogin}
                     disabled={loading || !formData.username}
@@ -357,12 +577,29 @@ const CombinedAuthForm = () => {
                     </div>
                     {loading ? 'Authenticating...' : 'Sign in with Biometric'}
                   </button>
-
                   <p className="text-xs text-white/50 text-center">
                     Enter your username first, then use biometric authentication
                   </p>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <>
+                  <button
+                    type="button"
+                    onClick={biometricRegister}
+                    disabled={loading || !formData.username}
+                    className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-3 sm:py-4 px-6 rounded-xl font-medium hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-3 group text-sm sm:text-base"
+                  >
+                    <div className="p-1.5 sm:p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                      <Fingerprint className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                    </div>
+                    {loading ? 'Registering...' : 'Register Biometric/Passkey'}
+                  </button>
+                  <p className="text-xs text-white/50 text-center">
+                    You can set up biometric authentication after creating your account
+                  </p>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="text-center mt-4">
