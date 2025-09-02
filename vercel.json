@@ -3,6 +3,10 @@
     {
       "source": "/(.*)",
       "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; connect-src 'self' https://biometricauth-backend-production.up.railway.app https://ipapi.co https://nominatim.openstreetmap.org http://localhost:5000;"
+        },
         { 
           "key": "X-Content-Type-Options", 
           "value": "nosniff" 
