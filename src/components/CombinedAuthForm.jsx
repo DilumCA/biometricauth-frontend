@@ -147,63 +147,68 @@ const CombinedAuthForm = () => {
   };
 
   const handleTraditionalAuth = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      // Get browser location if available
-      let browserLocation = null;
-      if (isLogin) { // Only get location for login, not signup
-        browserLocation = await getBrowserLocation();
-      }
+  try {
+    // Get browser location for both login and signup
+    const browserLocation = await getBrowserLocation();
 
-      const endpoint = isLogin ? '/login' : '/signup';
-      const body = isLogin 
-        ? { 
-            username: formData.username, 
-            password: formData.password,
-            browserLocation // Include location data if available
-          }
-        : {
-            firstname: formData.firstname,
-            lastname: formData.lastname,
-            username: formData.username,
-            email: formData.email,
-            password: formData.password
-          };
-
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        if (isLogin) {
-          // Login: Store user and go to dashboard
-          localStorage.setItem('user', JSON.stringify(data.user));
-          showNotification('success', data.message);
-          navigate('/dashboard');
-        } else {
-          // ✅ Signup: Store user and go directly to dashboard
-          localStorage.setItem('user', JSON.stringify(data.user));
-          showNotification('success', data.message);
-          navigate('/dashboard');
+    const endpoint = isLogin ? '/login' : '/signup';
+    const body = isLogin 
+      ? { 
+          username: formData.username, 
+          password: formData.password,
+          browserLocation // Include location data for login
         }
+      : {
+          firstname: formData.firstname,
+          lastname: formData.lastname,
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          browserLocation // Include location data for signup
+        };
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      if (isLogin) {
+        // Login: Store user and go to dashboard
+        localStorage.setItem('user', JSON.stringify(data.user));
+        showNotification('success', data.message);
+        navigate('/dashboard');
       } else {
-        showNotification('error', data.message);
+        // Signup: Store user and go directly to dashboard
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Show location confirmation if location was captured
+        if (data.user.locationCaptured) {
+          showNotification('success', 'Your current location has been saved as a trusted location for enhanced security.');
+        } else {
+          showNotification('info', 'Your account was created but we couldn\'t capture your location. You can add trusted locations later.');
+        }
+        
+        navigate('/dashboard');
       }
-    } catch (error) {
-      console.error('Authentication error:', error);
-      showNotification('error', 'Network error. Please try again.');
-    } finally {
-      setLoading(false);
+    } else {
+      showNotification('error', data.message);
     }
-  };
+  } catch (error) {
+    console.error('Authentication error:', error);
+    showNotification('error', 'Network error. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Device info extraction for registration
   const getDeviceInfo = () => {
@@ -536,7 +541,19 @@ const CombinedAuthForm = () => {
                     </button>
                   </div>
                 </div>
-
+{!isLogin && (
+  <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
+    <div className="flex items-start gap-3">
+      <Shield className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+      <div>
+        <h4 className="text-sm font-medium text-white mb-1">Enhanced Security</h4>
+        <p className="text-xs text-white/70 leading-relaxed">
+          We'll securely save your current location as a trusted location. This helps us identify and alert you about suspicious login attempts from unfamiliar locations.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
                 <button
                   type="submit"
                   disabled={loading}
