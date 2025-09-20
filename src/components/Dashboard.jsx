@@ -25,6 +25,7 @@ import {
   X
 } from 'lucide-react';
 import { useNotification } from './Notification';
+import WalletManager from './WalletManager';
 
 const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
   const [userInfo, setUserInfo] = useState(null);
@@ -460,6 +461,11 @@ const Dashboard = ({ user, onLogout, onSetupBiometric }) => {
                 </div>
               </div>
             </div>
+          </div>
+
+           {/* Add this right before your biometric management section */}
+          <div className="lg:col-span-3">
+            <WalletManager user={user} />
           </div>
 
            {/* Biometric Management - Mobile Optimized */}
