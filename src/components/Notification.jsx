@@ -46,7 +46,10 @@ const Notification = ({ type, message, isVisible, onClose, duration = 5000 }) =>
     <div className="fixed top-4 right-4 z-50 animate-slide-in">
       <div className={`flex items-center gap-3 p-4 border rounded-lg shadow-lg max-w-md ${getStyles()}`}>
         {getIcon()}
-        <p className="text-sm font-medium flex-1">{message}</p>
+        <div className="text-sm font-medium flex-1">
+          {/* Support both string and JSX content */}
+          {typeof message === 'string' ? <p>{message}</p> : message}
+        </div>
         <button
           onClick={onClose}
           className="p-1 hover:bg-black hover:bg-opacity-10 rounded transition-colors"
